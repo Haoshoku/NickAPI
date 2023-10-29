@@ -34,7 +34,7 @@ import xyz.haoshoku.nick.listener.PlayerJoinListener;
 import xyz.haoshoku.nick.listener.PlayerLoginListener;
 import xyz.haoshoku.nick.listener.PlayerQuitListener;
 import xyz.haoshoku.nick.version.VersionHandler;
-import xyz.haoshoku.nick.version.v1_20_R1.Handler_v1_20_R1;
+import xyz.haoshoku.nick.version.v1_20_R2.Handler_v1_20_R2;
 import xyz.haoshoku.nick.version.v1_8_R3.Handler_v1_8_R3;
 
 public class NickPlugin extends JavaPlugin {
@@ -70,8 +70,8 @@ public class NickPlugin extends JavaPlugin {
                 break;
             }
 
-            case "v1_20_R1": {
-                this.handler = new Handler_v1_20_R1();
+            case "v1_20_R2": {
+                this.handler = new Handler_v1_20_R2();
                 break;
             }
 

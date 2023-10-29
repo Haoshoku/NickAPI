@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package xyz.haoshoku.nick.version.v1_20_R1;
+package xyz.haoshoku.nick.version.v1_20_R2;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
@@ -36,11 +36,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.RemoteChatSession;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.level.biome.BiomeManager;
 import org.bukkit.Bukkit;
-import org.bukkit.craftbukkit.v1_20_R1.entity.CraftPlayer;
+import org.bukkit.craftbukkit.v1_20_R2.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
+import xyz.haoshoku.nick.user.User;
 import xyz.haoshoku.nick.user.UserHandler;
 import xyz.haoshoku.nick.utils.ReflectionUtils;
 import xyz.haoshoku.nick.version.VersionHandler;
@@ -49,7 +49,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 
-public class Handler_v1_20_R1 implements VersionHandler {
+public class Handler_v1_20_R2 implements VersionHandler {
 
     public void inject( Player player ) {
         ChannelDuplexHandler duplexHandler = new ChannelDuplexHandler() {
@@ -136,10 +136,7 @@ public class Handler_v1_20_R1 implements VersionHandler {
         var location = player.getLocation().clone();
         var serverLevel = serverPlayer.serverLevel();
 
-        var respawnPacket = new ClientboundRespawnPacket( serverLevel.dimensionTypeId(), serverLevel.dimension(),
-                BiomeManager.obfuscateSeed( serverLevel.getSeed() ), serverPlayer.gameMode.getGameModeForPlayer(), serverPlayer.gameMode.getPreviousGameModeForPlayer(),
-                serverLevel.isDebug(), serverLevel.isFlat(), (byte) 0, serverPlayer.getLastDeathLocation(), serverPlayer.getPortalCooldown() );
-
+        var respawnPacket = new ClientboundRespawnPacket( serverPlayer.createCommonSpawnInfo( serverLevel ), (byte) 3 );
 
         serverPlayer.connection.send( removeInfoPacket );
         serverPlayer.connection.send( updateInfoPacket );
@@ -162,7 +159,7 @@ public class Handler_v1_20_R1 implements VersionHandler {
         var gamePacketListener = ((CraftPlayer) player).getHandle().connection;
 
         try {
-            var connectionField = gamePacketListener.getClass().getDeclaredField( "h" );
+            var connectionField = gamePacketListener.getClass().getSuperclass().getDeclaredField( "c" );
             connectionField.setAccessible( true );
             var connection = (Connection) connectionField.get( gamePacketListener );
             return connection.channel.pipeline();
@@ -177,6 +174,19 @@ public class Handler_v1_20_R1 implements VersionHandler {
         if ( playerUser == null ) return;
         ( (CraftPlayer) toPlayer ).getHandle().connection.send( new ClientboundPlayerInfoRemovePacket(
                 Collections.singletonList( playerUser.getNickedUniqueId() ) ) );
+    }
+
+    @Override
+    public void setSkinData( Player player ) {
+        User user = UserHandler.getUser( player.getUniqueId() );
+        GameProfile profile = ReflectionUtils.getProfile( player );
+
+        for ( Property property : profile.getProperties().get( "textures" ) ) {
+            user.setOriginalValue( property.value()  );
+            user.setOriginalSignature( property.signature() );
+            user.setNickedValue( property.value() );
+            user.setNickedSignature( property.signature() );
+        }
     }
 
 }

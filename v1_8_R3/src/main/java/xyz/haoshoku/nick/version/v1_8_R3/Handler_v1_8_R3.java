@@ -152,6 +152,19 @@ public class Handler_v1_8_R3 implements VersionHandler {
     }
 
     @Override
+    public void setSkinData( Player player ) {
+        User user = UserHandler.getUser( player.getUniqueId() );
+        GameProfile profile = ReflectionUtils.getProfile( player );
+
+        for ( Property property : profile.getProperties().get( "textures" ) ) {
+            user.setOriginalValue( property.getValue() );
+            user.setOriginalSignature( property.getSignature() );
+            user.setNickedValue( property.getValue() );
+            user.setNickedSignature( property.getSignature() );
+        }
+    }
+
+    @Override
     public void removeCurrentUniqueId( Player player, Player toPlayer ) {
         User playerUser = UserHandler.getUser( player.getUniqueId() );
         EntityPlayer entityPlayer = ((CraftPlayer) player).getHandle();

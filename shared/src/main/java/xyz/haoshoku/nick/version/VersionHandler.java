@@ -31,6 +31,8 @@ public interface VersionHandler {
 
     void sendPacket( Player player, Plugin plugin );
 
+    void setSkinData( Player player );
+
     void inject( Player player );
 
     void removeCurrentUniqueId( Player player, Player toPlayer );

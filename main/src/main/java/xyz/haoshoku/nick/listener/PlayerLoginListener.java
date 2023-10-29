@@ -24,16 +24,14 @@
 
 package xyz.haoshoku.nick.listener;
 
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.Property;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerLoginEvent;
+import xyz.haoshoku.nick.NickPlugin;
 import xyz.haoshoku.nick.user.User;
 import xyz.haoshoku.nick.user.UserHandler;
-import xyz.haoshoku.nick.utils.ReflectionUtils;
 
 public class PlayerLoginListener implements Listener {
 
@@ -41,22 +39,12 @@ public class PlayerLoginListener implements Listener {
     public void onLogin( PlayerLoginEvent event ) {
         Player player = event.getPlayer();
         UserHandler.createUser( player.getUniqueId() );
-        User user = UserHandler.getUser( player.getUniqueId() ); // TODO NULL
-
+        User user = UserHandler.getUser( player.getUniqueId() );
         user.setOriginalName( player.getName() );
-        user.setNickedName( player.getName() );
-
-        GameProfile profile = ReflectionUtils.getProfile( player );
-
-        for ( Property property : profile.getProperties().get( "textures" ) ) {
-            user.setOriginalValue( property.getValue() );
-            user.setOriginalSignature( property.getSignature() );
-            user.setNickedValue( property.getValue() );
-            user.setNickedSignature( property.getSignature() );
-        }
-
-        user.setNickedUniqueId( player.getUniqueId() );
         user.setOriginalUniqueId(  player.getUniqueId() );
+        user.setNickedName( player.getName() );
+        user.setNickedUniqueId( player.getUniqueId() );
+        NickPlugin.instance().getHandler().setSkinData( player );
     }
 
 

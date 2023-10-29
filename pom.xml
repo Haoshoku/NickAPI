@@ -6,12 +6,12 @@
 
     <groupId>xyz.haoshoku.nick</groupId>
     <artifactId>nickapi</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>1.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <modules>
         <module>v1_8_R3</module>
-        <module>v1_20_R1</module>
+        <module>v1_20_R2</module>
         <module>shared</module>
         <module>main</module>
     </modules>
