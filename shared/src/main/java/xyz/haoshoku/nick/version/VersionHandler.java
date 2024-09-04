@@ -29,12 +29,15 @@ import org.bukkit.plugin.Plugin;
 
 public interface VersionHandler {
 
-    void sendPacket( Player player, Plugin plugin );
+    void pluginOnEnable( Plugin plugin );
 
-    void setSkinData( Player player );
+    void pluginOnDisable( Plugin plugin );
+
+    void setPlayerData( Player player );
 
     void inject( Player player );
 
     void removeCurrentUniqueId( Player player, Player toPlayer );
 
+    void sendPacket( Player player, Plugin plugin );
 }

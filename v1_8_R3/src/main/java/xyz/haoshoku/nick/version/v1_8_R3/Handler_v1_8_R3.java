@@ -37,7 +37,7 @@ import org.bukkit.craftbukkit.v1_8_R3.CraftWorld;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
-import xyz.haoshoku.nick.user.User;
+import xyz.haoshoku.nick.user.NickUser;
 import xyz.haoshoku.nick.user.UserHandler;
 import xyz.haoshoku.nick.utils.ReflectionUtils;
 import xyz.haoshoku.nick.version.VersionHandler;
@@ -47,6 +47,39 @@ import java.util.List;
 import java.util.UUID;
 
 public class Handler_v1_8_R3 implements VersionHandler {
+
+    @Override
+    public void pluginOnEnable( Plugin plugin ) {
+        Bukkit.getScheduler().runTask( plugin, () -> {
+            for ( Player player : Bukkit.getOnlinePlayers() ) {
+                UserHandler.createUser( player.getUniqueId() );
+                NickUser user = UserHandler.getUser( player.getUniqueId() );
+                this.setPlayerData( player );
+                user.setInitialized( true );
+                this.sendPacket( player, plugin );
+            }
+        } );
+    }
+
+    @Override
+    public void pluginOnDisable( Plugin plugin ) {
+        for ( Player player : Bukkit.getOnlinePlayers() ) {
+            NickUser user = UserHandler.getUser( player.getUniqueId() );
+            if ( user != null ) {
+                GameProfile profile = ((CraftPlayer) player).getProfile();
+                profile.getProperties().put( "textures", new Property( "textures",
+                        user.getOriginalValue(), user.getOriginalSignature() ) );
+                ReflectionUtils.setField( profile, "id", user.getOriginalUniqueId() );
+                ReflectionUtils.setField( profile, "name", user.getOriginalName() );
+
+                for ( Player online : Bukkit.getOnlinePlayers() ) {
+                    if ( player != online )
+                        this.removeCurrentUniqueId( player, online );
+                }
+                UserHandler.deleteUser( player.getUniqueId() );
+            }
+        }
+    }
 
     public void inject( Player player ) {
         ChannelDuplexHandler duplexHandler = new ChannelDuplexHandler() {
@@ -65,14 +98,32 @@ public class Handler_v1_8_R3 implements VersionHandler {
                             PacketPlayOutPlayerInfo.PlayerInfoData infoData = playerInfoDataList.get( i );
                             UUID receivedUUID = infoData.a().getId();
                             if ( receivedUUID.equals( player.getUniqueId() ) ) continue;
-                            User user = UserHandler.getUser( receivedUUID );
+                            NickUser receivedUser = UserHandler.getUser( receivedUUID );
                             Player receivedPlayer = Bukkit.getPlayer( receivedUUID );
-                            if ( user == null || receivedPlayer == null || !receivedPlayer.isOnline() ) continue;
+                            if ( receivedUser == null || receivedPlayer == null || !receivedPlayer.isOnline() ) continue;
+                            if ( receivedUser.getNickedUniqueId() == null || receivedUser.getNickedName() == null
+                                    || receivedUser.getNickedValue() == null || receivedUser.getNickedSignature() == null ) continue;
+                            if ( UserHandler.getUser( player.getUniqueId() ) == null ) continue;
 
-                            UUID nickedUniqueId = user.getNickedUniqueId();
+                            UUID packetUniqueId;
+                            String packetName, packetValue, packetSignature;
 
-                            GameProfile newGameProfile = new GameProfile( nickedUniqueId, user.getNickedName() );
-                            newGameProfile.getProperties().put( "textures", new Property( "textures", user.getNickedValue(), user.getNickedSignature() ) );
+                            NickUser playerUser = UserHandler.getUser( player.getUniqueId() );
+
+                            if ( playerUser.getBypassNickSet().contains( receivedUser.getOriginalUniqueId() ) ) {
+                                packetUniqueId = receivedUser.getOriginalUniqueId();
+                                packetName = receivedUser.getOriginalName();
+                                packetValue = receivedUser.getOriginalValue();
+                                packetSignature = receivedUser.getOriginalSignature();
+                            } else {
+                                packetUniqueId = receivedUser.getNickedUniqueId();
+                                packetName = receivedUser.getNickedName();
+                                packetValue = receivedUser.getNickedValue();
+                                packetSignature = receivedUser.getNickedSignature();
+                            }
+
+                            GameProfile newGameProfile = new GameProfile( packetUniqueId, packetName );
+                            newGameProfile.getProperties().put( "textures", new Property( "textures", packetValue, packetSignature ) );
 
                             PacketPlayOutPlayerInfo.PlayerInfoData newInfoData =
                                     playerInfoPacket.new PlayerInfoData( newGameProfile, infoData.b(), infoData.c(), infoData.d() );
@@ -84,9 +135,10 @@ public class Handler_v1_8_R3 implements VersionHandler {
                 if ( packet instanceof PacketPlayOutNamedEntitySpawn ) {
                     PacketPlayOutNamedEntitySpawn entitySpawnPacket = (PacketPlayOutNamedEntitySpawn) packet;
                     UUID uuid = (UUID) ReflectionUtils.getField( entitySpawnPacket, "b" );
-                    User user = UserHandler.getUser( uuid );
+                    NickUser user = UserHandler.getUser( uuid );
+                    NickUser playerUser = UserHandler.getUser( player.getUniqueId() );
 
-                    if ( user != null )
+                    if ( user != null && playerUser != null && !playerUser.getBypassNickSet().contains( user.getOriginalUniqueId() ) )
                         ReflectionUtils.setField( entitySpawnPacket, "b", user.getNickedUniqueId() );
                 }
 
@@ -101,15 +153,27 @@ public class Handler_v1_8_R3 implements VersionHandler {
     public void sendPacket( Player player, Plugin plugin ) {
         CraftPlayer craftPlayer = (CraftPlayer) player;
         EntityPlayer entityPlayer = craftPlayer.getHandle();
-        User user = UserHandler.getUser( player.getUniqueId() );
+        NickUser user = UserHandler.getUser( player.getUniqueId() );
         if ( !player.isOnline() || user == null ) return;
 
         PacketPlayOutPlayerInfo removeInfoPacket = new PacketPlayOutPlayerInfo
                 ( PacketPlayOutPlayerInfo.EnumPlayerInfoAction.REMOVE_PLAYER, entityPlayer );
 
-        GameProfile newProfile = new GameProfile( player.getUniqueId(), user.getNickedName() );
+        String name, value, signature;
+
+        if ( user.getBypassNickSet().contains( player.getUniqueId() ) ) {
+            name = user.getOriginalName();
+            value = user.getOriginalValue();
+            signature = user.getOriginalSignature();
+        } else {
+            name = user.getNickedName();
+            value = user.getNickedValue();
+            signature = user.getNickedSignature();
+        }
+
+        GameProfile newProfile = new GameProfile( player.getUniqueId(), name );
         newProfile.getProperties().removeAll( "textures" );
-        newProfile.getProperties().put( "textures", new Property( "textures", user.getNickedValue(), user.getNickedSignature() ) );
+        newProfile.getProperties().put( "textures", new Property( "textures", value, signature ) );
 
 
         PacketPlayOutPlayerInfo addInfoPacket = new PacketPlayOutPlayerInfo( PacketPlayOutPlayerInfo.EnumPlayerInfoAction.ADD_PLAYER ); // DECORATION
@@ -125,7 +189,6 @@ public class Handler_v1_8_R3 implements VersionHandler {
         entityPlayer.playerConnection.sendPacket( removeInfoPacket );
         entityPlayer.playerConnection.sendPacket( addInfoPacket );
 
-
         entityPlayer.playerConnection.sendPacket( new PacketPlayOutRespawn( actualDimension, worldServer.getDifficulty(),
                 worldServer.getWorldData().getType(), entityPlayer.playerInteractManager.getGameMode() ) );
         entityPlayer.playerConnection.sendPacket( new PacketPlayOutRespawn( actualDimension, worldServer.getDifficulty(),
@@ -139,8 +202,12 @@ public class Handler_v1_8_R3 implements VersionHandler {
         player.setFallDistance( 0F );
 
         for ( Player online : Bukkit.getOnlinePlayers() ) {
-            online.hidePlayer( player );
-            online.showPlayer( player );
+            if ( player != online ) {
+                if ( online.canSee( player ) ) {
+                    online.hidePlayer( player );
+                    online.showPlayer( player );
+                }
+            }
         }
 
         PlayerList playerList = MinecraftServer.getServer().getPlayerList();
@@ -152,9 +219,14 @@ public class Handler_v1_8_R3 implements VersionHandler {
     }
 
     @Override
-    public void setSkinData( Player player ) {
-        User user = UserHandler.getUser( player.getUniqueId() );
+    public void setPlayerData( Player player ) {
+        NickUser user = UserHandler.getUser( player.getUniqueId() );
         GameProfile profile = ReflectionUtils.getProfile( player );
+
+        user.setOriginalName( player.getName() );
+        user.setOriginalUniqueId( player.getUniqueId() );
+        user.setNickedName( player.getName() );
+        user.setNickedUniqueId( player.getUniqueId() );
 
         for ( Property property : profile.getProperties().get( "textures" ) ) {
             user.setOriginalValue( property.getValue() );
@@ -166,7 +238,7 @@ public class Handler_v1_8_R3 implements VersionHandler {
 
     @Override
     public void removeCurrentUniqueId( Player player, Player toPlayer ) {
-        User playerUser = UserHandler.getUser( player.getUniqueId() );
+        NickUser playerUser = UserHandler.getUser( player.getUniqueId() );
         EntityPlayer entityPlayer = ((CraftPlayer) player).getHandle();
         if ( playerUser == null ) return;
 

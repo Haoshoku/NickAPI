@@ -22,37 +22,37 @@
  * SOFTWARE.
  */
 
-package xyz.haoshoku.nick.user;
+package xyz.haoshoku.nick.listener;
 
-import java.util.Map;
+import org.bukkit.Bukkit;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
+import org.spigotmc.SpigotConfig;
+import xyz.haoshoku.nick.api.NickAPI;
+import xyz.haoshoku.nick.user.NickUser;
+import xyz.haoshoku.nick.user.UserHandler;
+
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
-public class UserHandler {
+public class AsyncPlayerPreLoginListener implements Listener {
 
-    private static final ConcurrentHashMap<UUID, NickUser> UUID_USER_CONCURRENT_HASH_MAP = new ConcurrentHashMap<>();
+    @EventHandler
+    public void onPreLogin( AsyncPlayerPreLoginEvent event ) {
+        UUID uuid = event.getUniqueId();
+        String name = event.getName();
+        UserHandler.createUser( uuid );
+        NickUser user = UserHandler.getUser( uuid );
 
-    public static void createUser( UUID uuid ) {
-        if ( !UserHandler.UUID_USER_CONCURRENT_HASH_MAP.containsKey( uuid ) )
-            UserHandler.UUID_USER_CONCURRENT_HASH_MAP.put( uuid, new NickUser() );
-    }
-
-    public static NickUser getUser( UUID uuid ) {
-        return UserHandler.UUID_USER_CONCURRENT_HASH_MAP.get( uuid );
-    }
-
-    public static void deleteUser( UUID uuid ) {
-        UserHandler.UUID_USER_CONCURRENT_HASH_MAP.remove( uuid );
-    }
-
-    public static NickUser[] getUsers() {
-        NickUser[] users = new NickUser[ UserHandler.UUID_USER_CONCURRENT_HASH_MAP.size() ];
-        int count = 0;
-        for ( Map.Entry<UUID, NickUser> userEntry : UserHandler.UUID_USER_CONCURRENT_HASH_MAP.entrySet() ) {
-            users[count] = userEntry.getValue();
-            count++;
+        if ( !Bukkit.getServer().getOnlineMode() && !SpigotConfig.bungee ) { // Cracked Support
+            String[] skinData = NickAPI.SKIN_GETTER.uuidToSkinData( NickAPI.UUID_GETTER.minecraftNameToUniqueId( name ) );
+            user.setOriginalValue( skinData[0] );
+            user.setOriginalSignature( skinData[1] );
+            user.setNickedValue( skinData[0] );
+            user.setNickedSignature( skinData[1] );
         }
-        return users;
+
+        user.setPassthroughAsyncLogin( true );
     }
 
 }

@@ -22,37 +22,26 @@
  * SOFTWARE.
  */
 
-package xyz.haoshoku.nick.user;
+package xyz.haoshoku.nick.listener;
 
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
+import xyz.haoshoku.nick.NickPlugin;
+import xyz.haoshoku.nick.user.NickUser;
+import xyz.haoshoku.nick.user.UserHandler;
 
-public class UserHandler {
+public class PlayerJoinListener implements Listener {
 
-    private static final ConcurrentHashMap<UUID, NickUser> UUID_USER_CONCURRENT_HASH_MAP = new ConcurrentHashMap<>();
+    @EventHandler( priority = EventPriority.HIGHEST )
+    public void onJoin( PlayerJoinEvent event ) {
+        Player player = event.getPlayer();
+        NickUser user = UserHandler.getUser( player.getUniqueId() );
 
-    public static void createUser( UUID uuid ) {
-        if ( !UserHandler.UUID_USER_CONCURRENT_HASH_MAP.containsKey( uuid ) )
-            UserHandler.UUID_USER_CONCURRENT_HASH_MAP.put( uuid, new NickUser() );
-    }
-
-    public static NickUser getUser( UUID uuid ) {
-        return UserHandler.UUID_USER_CONCURRENT_HASH_MAP.get( uuid );
-    }
-
-    public static void deleteUser( UUID uuid ) {
-        UserHandler.UUID_USER_CONCURRENT_HASH_MAP.remove( uuid );
-    }
-
-    public static NickUser[] getUsers() {
-        NickUser[] users = new NickUser[ UserHandler.UUID_USER_CONCURRENT_HASH_MAP.size() ];
-        int count = 0;
-        for ( Map.Entry<UUID, NickUser> userEntry : UserHandler.UUID_USER_CONCURRENT_HASH_MAP.entrySet() ) {
-            users[count] = userEntry.getValue();
-            count++;
-        }
-        return users;
+        user.setInitialized( true );
+        NickPlugin.instance().getHandler().inject( player );
     }
 
 }

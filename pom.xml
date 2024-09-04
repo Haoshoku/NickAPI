@@ -5,15 +5,18 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>xyz.haoshoku.nick</groupId>
-    <artifactId>nickapi</artifactId>
-    <version>1.1-SNAPSHOT</version>
+    <artifactId>nickplugin</artifactId>
+    <version>7.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <modules>
         <module>v1_8_R3</module>
         <module>v1_20_R2</module>
+        <module>v1_21_R1</module>
         <module>shared</module>
-        <module>main</module>
+        <module>nickapi</module>
+        <module>v1_20_R4</module>
+        <module>v1_20_R3</module>
     </modules>
 
     <properties>
@@ -22,4 +25,20 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>3.1.1</version>
+            </plugin>
+        </plugins>
+    </build>
+
+    <distributionManagement>
+        <repository>
+            <id>nickapi</id>
+            <url>https://haoshoku.xyz:8081/repository/default/</url>
+        </repository>
+    </distributionManagement>
 </project>

@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package xyz.haoshoku.nick.version.v1_20_R2;
+package xyz.haoshoku.nick.version.v1_20_R4;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
@@ -36,8 +36,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.RemoteChatSession;
 import net.minecraft.network.protocol.game.*;
 import org.bukkit.Bukkit;
-import org.bukkit.craftbukkit.v1_20_R2.CraftServer;
-import org.bukkit.craftbukkit.v1_20_R2.entity.CraftPlayer;
+import org.bukkit.craftbukkit.v1_20_R4.CraftServer;
+import org.bukkit.craftbukkit.v1_20_R4.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.Plugin;
@@ -50,7 +50,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.UUID;
 
-public class Handler_v1_20_R2 implements VersionHandler {
+public class Handler_v1_20_R4 implements VersionHandler {
 
     @Override
     public void pluginOnEnable( Plugin plugin ) {
@@ -92,27 +92,23 @@ public class Handler_v1_20_R2 implements VersionHandler {
             public void write( ChannelHandlerContext ctx, Object packet, ChannelPromise promise ) throws Exception {
 
                 if ( packet instanceof ClientboundPlayerChatPacket chatPacket ) {
-                    var content = chatPacket.unsignedContent();
-                    if ( content == null )
-                        content = Component.literal( chatPacket.body().content() );
-                    var chatType = chatPacket.chatType().resolve(
-                            ((CraftPlayer) player).getHandle().level().registryAccess() );
-
                     ((CraftPlayer) player).getHandle().connection.send(
-                            new ClientboundSystemChatPacket( chatType.orElseThrow().decorate( content ), false ) );
+                            new ClientboundSystemChatPacket(
+                                    chatPacket.chatType().decorate( chatPacket.unsignedContent() == null
+                                            ? Component.literal( chatPacket.body().content() ) : chatPacket.unsignedContent() ), false ) );
                     return;
                 }
 
                 if ( packet instanceof ClientboundBundlePacket bundlePacket ) {
                     for ( var subPacket : bundlePacket.subPackets() ) {
                         if ( subPacket instanceof ClientboundAddEntityPacket addEntityPacket ) {
-                            var uuid = (UUID) ReflectionUtils.getField( addEntityPacket, "d" );
+                            var uuid = (UUID) ReflectionUtils.getField( addEntityPacket, "e" );
                             var receivedUser = UserHandler.getUser( uuid );
                             var playerUser = UserHandler.getUser( player.getUniqueId() );
 
-                            if ( receivedUser != null && receivedUser.getNickedUniqueId() != null
+                            if ( playerUser != null && receivedUser != null && receivedUser.getNickedUniqueId() != null
                                     && !playerUser.getBypassNickSet().contains( uuid ) )
-                                ReflectionUtils.setField( addEntityPacket, "d", receivedUser.getNickedUniqueId() );
+                                ReflectionUtils.setField( addEntityPacket, "e", receivedUser.getNickedUniqueId() );
                         }
                     }
                 }
@@ -160,7 +156,7 @@ public class Handler_v1_20_R2 implements VersionHandler {
                         entriesListCopied.set( i, newEntry );
                     }
 
-                    ReflectionUtils.setField( infoUpdatePacket, "b", entriesListCopied );
+                    ReflectionUtils.setField( infoUpdatePacket, "c", entriesListCopied );
                 }
 
 
@@ -205,16 +201,16 @@ public class Handler_v1_20_R2 implements VersionHandler {
                         ClientboundPlayerInfoUpdatePacket.Action.UPDATE_LATENCY, ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME );
 
         var updateInfoPacket = new ClientboundPlayerInfoUpdatePacket( ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER, serverPlayer ); // DECORATION
-        ReflectionUtils.setField( updateInfoPacket, "a", enumActions );
-        ReflectionUtils.setField( updateInfoPacket, "b", Collections.singletonList( new ClientboundPlayerInfoUpdatePacket.Entry( player.getUniqueId(), newProfile, true, craftPlayer.getPing(),
+        ReflectionUtils.setField( updateInfoPacket, "b", enumActions );
+        ReflectionUtils.setField( updateInfoPacket, "c", Collections.singletonList( new ClientboundPlayerInfoUpdatePacket.Entry( player.getUniqueId(), newProfile, true, craftPlayer.getPing(),
                 serverPlayer.gameMode.getGameModeForPlayer(), serverPlayer.listName, Optionull.map( serverPlayer.getChatSession(), RemoteChatSession::asData ) ) ) );
 
 
-        var playerList = ((CraftServer) Bukkit.getServer()).getServer().getPlayerList();
-        var location = player.getLocation().clone();
-
         serverPlayer.connection.send( removeInfoPacket );
         serverPlayer.connection.send( updateInfoPacket );
+
+        var playerList = ((CraftServer) Bukkit.getServer()).getServer().getPlayerList();
+        var location = player.getLocation().clone();
 
         playerList.respawn( serverPlayer, serverPlayer.serverLevel(), true, location, true, PlayerRespawnEvent.RespawnReason.PLUGIN );
 
@@ -234,7 +230,7 @@ public class Handler_v1_20_R2 implements VersionHandler {
         var gamePacketListener = ((CraftPlayer) player).getHandle().connection;
 
         try {
-            var connectionField = gamePacketListener.getClass().getSuperclass().getDeclaredField( "c" );
+            var connectionField = gamePacketListener.getClass().getSuperclass().getDeclaredField( "e" );
             connectionField.setAccessible( true );
             var connection = (Connection) connectionField.get( gamePacketListener );
             return connection.channel.pipeline();

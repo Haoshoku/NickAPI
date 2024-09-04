@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package xyz.haoshoku.nick.version.v1_20_R2;
+package xyz.haoshoku.nick.version.v1_20_R3;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
@@ -36,8 +36,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.RemoteChatSession;
 import net.minecraft.network.protocol.game.*;
 import org.bukkit.Bukkit;
-import org.bukkit.craftbukkit.v1_20_R2.CraftServer;
-import org.bukkit.craftbukkit.v1_20_R2.entity.CraftPlayer;
+import org.bukkit.craftbukkit.v1_20_R3.CraftServer;
+import org.bukkit.craftbukkit.v1_20_R3.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.Plugin;
@@ -50,7 +50,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.UUID;
 
-public class Handler_v1_20_R2 implements VersionHandler {
+public class Handler_v1_20_R3 implements VersionHandler {
 
     @Override
     public void pluginOnEnable( Plugin plugin ) {
@@ -110,7 +110,7 @@ public class Handler_v1_20_R2 implements VersionHandler {
                             var receivedUser = UserHandler.getUser( uuid );
                             var playerUser = UserHandler.getUser( player.getUniqueId() );
 
-                            if ( receivedUser != null && receivedUser.getNickedUniqueId() != null
+                            if ( playerUser != null && receivedUser != null && receivedUser.getNickedUniqueId() != null
                                     && !playerUser.getBypassNickSet().contains( uuid ) )
                                 ReflectionUtils.setField( addEntityPacket, "d", receivedUser.getNickedUniqueId() );
                         }
