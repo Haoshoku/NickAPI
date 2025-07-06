@@ -1,5 +1,5 @@
 name: NickAPI
-version: 7.0
+version: 7.8
 author: Haoshoku
 main: xyz.haoshoku.nick.NickPlugin
-api-version: 1.20
+api-version: 1.21

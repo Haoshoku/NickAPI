@@ -5,7 +5,6 @@ import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
-import xyz.haoshoku.nick.NickPlugin;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -104,35 +103,32 @@ public class NickScoreboard {
      */
     public static void updateScoreboard( String nickedName ) {
         if ( !NickScoreboard.SCOREBOARD_MAP.containsKey( nickedName ) ) return;
-        Bukkit.getScheduler().runTask( NickPlugin.instance(), () -> {
-            Object[] values = NickScoreboard.SCOREBOARD_MAP.get( nickedName );
+        Object[] values = NickScoreboard.SCOREBOARD_MAP.get( nickedName );
 
-            String teamName = (String) values[0];
-            String prefix = (String) values[1];
-            String suffix = (String) values[2];
-            boolean newScoreboard = (boolean) values[3];
-            ChatColor color = (ChatColor) values[4];
-            for ( Player player : Bukkit.getOnlinePlayers() ) {
-                Scoreboard scoreboard;
+        String teamName = (String) values[0];
+        String prefix = (String) values[1];
+        String suffix = (String) values[2];
+        boolean newScoreboard = (boolean) values[3];
+        ChatColor color = (ChatColor) values[4];
+        for ( Player player : Bukkit.getOnlinePlayers() ) {
+            Scoreboard scoreboard;
 
-                if ( newScoreboard ) {
-                    if ( player.getScoreboard() == Bukkit.getScoreboardManager().getMainScoreboard() )
-                        player.setScoreboard( Bukkit.getScoreboardManager().getNewScoreboard() );
-                }
-                scoreboard = player.getScoreboard();
-
-                Team team = scoreboard.getTeam( teamName ) != null ? scoreboard.getTeam( teamName ) : scoreboard.registerNewTeam( teamName );
-                team.setPrefix( prefix );
-                team.setSuffix( suffix );
-
-
-                try {
-                    team.setColor( color );
-                } catch ( NoSuchMethodError ignore ) {
-                }
-
-                team.addEntry( nickedName );
+            if ( newScoreboard ) {
+                if ( player.getScoreboard() == Bukkit.getScoreboardManager().getMainScoreboard() )
+                    player.setScoreboard( Bukkit.getScoreboardManager().getNewScoreboard() );
             }
-        } );
+            scoreboard = player.getScoreboard();
+
+            Team team = scoreboard.getTeam( teamName ) != null ? scoreboard.getTeam( teamName ) : scoreboard.registerNewTeam( teamName );
+            team.setPrefix( prefix );
+            team.setSuffix( suffix );
+
+            try {
+                team.setColor( color );
+            } catch ( NoSuchMethodError ignore ) {
+            }
+
+            team.addEntry( nickedName );
+        }
     }
 }

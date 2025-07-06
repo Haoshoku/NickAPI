@@ -39,5 +39,5 @@ public interface VersionHandler {
 
     void removeCurrentUniqueId( Player player, Player toPlayer );
 
-    void sendPacket( Player player, Plugin plugin );
+    void sendPacket( Player player );
 }

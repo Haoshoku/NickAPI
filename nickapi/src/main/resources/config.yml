@@ -1,0 +1,9 @@
+# NickAPI configuration
+
+nickapi:
+  # Do not change this
+  config_version: 1
+  # Set this setting to true, if you want to enable cracked player support for your server.
+  cracked: false
+  # You can set a default skin if a player is changing his skin to a name that does not actually exist.
+  default_skin_name: "Notch"

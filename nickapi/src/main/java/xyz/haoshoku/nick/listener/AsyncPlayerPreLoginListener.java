@@ -24,14 +24,14 @@
 
 package xyz.haoshoku.nick.listener;
 
-import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
-import org.spigotmc.SpigotConfig;
-import xyz.haoshoku.nick.api.NickAPI;
+import xyz.haoshoku.nick.api.NickConfig;
 import xyz.haoshoku.nick.user.NickUser;
 import xyz.haoshoku.nick.user.UserHandler;
+import xyz.haoshoku.nick.website.SkinGetter;
+import xyz.haoshoku.nick.website.UUIDGetter;
 
 import java.util.UUID;
 
@@ -44,8 +44,9 @@ public class AsyncPlayerPreLoginListener implements Listener {
         UserHandler.createUser( uuid );
         NickUser user = UserHandler.getUser( uuid );
 
-        if ( !Bukkit.getServer().getOnlineMode() && !SpigotConfig.bungee ) { // Cracked Support
-            String[] skinData = NickAPI.SKIN_GETTER.uuidToSkinData( NickAPI.UUID_GETTER.minecraftNameToUniqueId( name ) );
+        if ( NickConfig.isCracked() ) { // Cracked Support
+            String[] skinData = SkinGetter.uuidToSkinTexture( UUIDGetter.minecraftNameToUniqueId( name ) );
+
             user.setOriginalValue( skinData[0] );
             user.setOriginalSignature( skinData[1] );
             user.setNickedValue( skinData[0] );

@@ -26,14 +26,13 @@ package xyz.haoshoku.nick.listener;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
-import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerLoginEvent;
-import org.spigotmc.SpigotConfig;
 import xyz.haoshoku.nick.NickPlugin;
+import xyz.haoshoku.nick.api.NickConfig;
 import xyz.haoshoku.nick.user.NickUser;
 import xyz.haoshoku.nick.user.UserHandler;
 import xyz.haoshoku.nick.utils.ReflectionUtils;
@@ -50,7 +49,7 @@ public class PlayerLoginListener implements Listener {
             return;
         }
 
-        if ( !Bukkit.getServer().getOnlineMode() && !SpigotConfig.bungee ) { // Cracked Support
+        if ( NickConfig.isCracked() ) { // Cracked Support
             GameProfile gameProfile = ReflectionUtils.getProfile( player );
             gameProfile.getProperties().put( "textures", new Property( "textures", user.getNickedValue(), user.getNickedSignature() ) );
         }

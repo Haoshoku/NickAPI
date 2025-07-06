@@ -59,6 +59,16 @@ public class ReflectionUtils {
         }
     }
 
+    public static void setFieldSuperClass( Object instance, String fieldAsClass, Object value ) {
+        try {
+            Field field = instance.getClass().getSuperclass().getDeclaredField( fieldAsClass );
+            field.setAccessible( true );
+            field.set( instance, value );
+        } catch ( Exception e ) {
+            throw new RuntimeException( e );
+        }
+    }
+
 
 
 }

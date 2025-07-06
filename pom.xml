@@ -6,20 +6,22 @@
 
     <groupId>xyz.haoshoku.nick</groupId>
     <artifactId>nickplugin</artifactId>
-    <version>7.0-SNAPSHOT</version>
+    <version>PARENT</version>
     <packaging>pom</packaging>
 
     <modules>
         <module>v1_8_R3</module>
-        <module>v1_20_R2</module>
         <module>v1_21_R1</module>
+        <module>v1_21_R2</module>
         <module>shared</module>
         <module>nickapi</module>
-        <module>v1_20_R4</module>
-        <module>v1_20_R3</module>
+        <module>v1_21_R3</module>
+        <module>v1_21_R4</module>
+        <module>v1_21_R5</module>
     </modules>
 
     <properties>
+        <revision>7.8</revision>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -30,7 +32,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
-                <version>3.1.1</version>
+                <version>3.1.4</version>
             </plugin>
         </plugins>
     </build>

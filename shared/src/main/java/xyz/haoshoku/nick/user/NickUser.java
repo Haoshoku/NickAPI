@@ -31,6 +31,8 @@ import java.util.UUID;
 
 public class NickUser {
 
+
+
     private String originalName, originalValue, originalSignature;
     private String nickedName, nickedValue, nickedSignature;
 

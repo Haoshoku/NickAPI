@@ -35,7 +35,7 @@ import xyz.haoshoku.nick.user.UserHandler;
 
 public class PlayerJoinListener implements Listener {
 
-    @EventHandler( priority = EventPriority.HIGHEST )
+    @EventHandler( priority = EventPriority.LOWEST )
     public void onJoin( PlayerJoinEvent event ) {
         Player player = event.getPlayer();
         NickUser user = UserHandler.getUser( player.getUniqueId() );

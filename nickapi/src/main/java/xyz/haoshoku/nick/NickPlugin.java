@@ -27,17 +27,15 @@ package xyz.haoshoku.nick;
 import org.bukkit.Bukkit;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
-import xyz.haoshoku.nick.api.NickAPI;
-import xyz.haoshoku.nick.listener.AsyncPlayerPreLoginListener;
-import xyz.haoshoku.nick.listener.PlayerJoinListener;
-import xyz.haoshoku.nick.listener.PlayerLoginListener;
-import xyz.haoshoku.nick.listener.PlayerQuitListener;
+import xyz.haoshoku.nick.api.NickConfig;
+import xyz.haoshoku.nick.listener.*;
 import xyz.haoshoku.nick.metrics.Metrics;
 import xyz.haoshoku.nick.version.VersionHandler;
-import xyz.haoshoku.nick.version.v1_20_R2.Handler_v1_20_R2;
-import xyz.haoshoku.nick.version.v1_20_R3.Handler_v1_20_R3;
-import xyz.haoshoku.nick.version.v1_20_R4.Handler_v1_20_R4;
 import xyz.haoshoku.nick.version.v1_21_R1.Handler_v1_21_R1;
+import xyz.haoshoku.nick.version.v1_21_R2.Handler_v1_21_R2;
+import xyz.haoshoku.nick.version.v1_21_R3.Handler_v1_21_R3;
+import xyz.haoshoku.nick.version.v1_21_R4.Handler_v1_21_R4;
+import xyz.haoshoku.nick.version.v1_21_R5.Handler_v1_21_R5;
 import xyz.haoshoku.nick.version.v1_8_R3.Handler_v1_8_R3;
 
 public class NickPlugin extends JavaPlugin {
@@ -55,7 +53,12 @@ public class NickPlugin extends JavaPlugin {
         this.registerListener();
 
         this.handler.pluginOnEnable( this );
-        NickAPI.setDefaultSkin( "Notch" );
+
+        this.getConfig().options().copyDefaults( true );
+        this.saveDefaultConfig();
+
+        NickConfig.setDefaultSkin( this.getConfig().getString( "nickapi.default_skin_name" ) );
+        NickConfig.setCracked( this.getConfig().getBoolean( "nickapi.cracked" ) );
 
         int id = 9115;
         new Metrics( this, id );
@@ -75,24 +78,28 @@ public class NickPlugin extends JavaPlugin {
                 break;
             }
 
-            case "v1_20_R2": {
-                this.handler = new Handler_v1_20_R2();
-                break;
-            }
-
-            case "v1_20_R3": {
-                this.handler = new Handler_v1_20_R3();
-                break;
-            }
-
-            case "v1_20_R4": {
-                this.handler = new Handler_v1_20_R4();
-                break;
-            }
-
-
             case "v1_21_R1": {
                 this.handler = new Handler_v1_21_R1();
+                break;
+            }
+
+            case "v1_21_R2": {
+                this.handler = new Handler_v1_21_R2();
+                break;
+            }
+
+            case "v1_21_R3": {
+                this.handler = new Handler_v1_21_R3();
+                break;
+            }
+
+            case "v1_21_R4": {
+                this.handler = new Handler_v1_21_R4();
+                break;
+            }
+
+            case "v1_21_R5": {
+                this.handler = new Handler_v1_21_R5();
                 break;
             }
 
@@ -112,22 +119,32 @@ public class NickPlugin extends JavaPlugin {
         } catch ( Exception ignore ) {
             String bukkitVersion = Bukkit.getBukkitVersion();
 
-            if ( bukkitVersion.startsWith( "1.21" ) )
+            if ( bukkitVersion.startsWith( "1.21.7" ) || bukkitVersion.startsWith( "1.21.6" ) )
+                versionTemp = "v1_21_R5";
+            if ( bukkitVersion.startsWith( "1.21.5" ) )
+                versionTemp = "v1_21_R4";
+            else if ( bukkitVersion.startsWith( "1.21.4" ) )
+                versionTemp = "v1_21_R3";
+            else if ( bukkitVersion.startsWith( "1.21.2" ) || bukkitVersion.startsWith( "1.21.3" ) )
+                versionTemp = "v1_21_R2";
+            else if ( bukkitVersion.startsWith( "1.21.1" ) || bukkitVersion.startsWith( "1.21-" ) )
                 versionTemp = "v1_21_R1";
-            else if ( bukkitVersion.startsWith( "1.20.5-R0.1" ) || bukkitVersion.startsWith( "1.20.6-R0.1" ) )
-                versionTemp = "v1_20_R4";
 
         }
         this.nmsVersion = versionTemp;
     }
 
     private void registerListener() {
-        Listener[] listeners = new Listener[] {
-                new AsyncPlayerPreLoginListener(),
+        Listener[] listeners = new Listener[]{
+                new AsyncPlayerPreLoginListener(), new PlayerCommandPreprocessListener(),
                 new PlayerJoinListener(), new PlayerLoginListener(), new PlayerQuitListener() };
 
         for ( Listener listener : listeners )
             Bukkit.getPluginManager().registerEvents( listener, this );
+    }
+
+    public String getNMSVersion() {
+        return this.nmsVersion;
     }
 
     public static NickPlugin instance() {

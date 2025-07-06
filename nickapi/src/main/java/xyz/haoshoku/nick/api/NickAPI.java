@@ -26,57 +26,18 @@ package xyz.haoshoku.nick.api;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.mineskin.JsoupRequestHandler;
-import org.mineskin.MineSkinClient;
-import org.mineskin.data.Skin;
-import org.mineskin.data.Texture;
 import xyz.haoshoku.nick.NickPlugin;
 import xyz.haoshoku.nick.user.NickUser;
 import xyz.haoshoku.nick.user.UserHandler;
 import xyz.haoshoku.nick.utils.ReflectionUtils;
+import xyz.haoshoku.nick.website.MineSkinGetter;
 import xyz.haoshoku.nick.website.SkinGetter;
 import xyz.haoshoku.nick.website.UUIDGetter;
 
 import java.io.File;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class NickAPI {
-
-    public static final SkinGetter SKIN_GETTER = new SkinGetter();
-    public static final UUIDGetter UUID_GETTER = new UUIDGetter();
-
-    private static MineSkinClient client = MineSkinClient.builder()
-            .requestHandler( JsoupRequestHandler::new )
-            .userAgent( "NickAPI/v7.0" )
-            .build();
-
-    /**
-     * Sets the default skin, if nicked name does not belong to a Minecraft account.
-     *
-     * @param minecraftName
-     */
-
-    public static void setDefaultSkin( String minecraftName ) {
-        Bukkit.getScheduler().runTaskAsynchronously( NickPlugin.instance(), () -> {
-            String[] textures = NickAPI.SKIN_GETTER.uuidToSkinData( NickAPI.UUID_GETTER.minecraftNameToUniqueId( minecraftName ) );
-            NickAPI.SKIN_GETTER.setDefaultValue( textures[0] );
-            NickAPI.SKIN_GETTER.setDefaultSignature( textures[1] );
-        } );
-    }
-
-    /**
-     * Sets the default skin, if nicked name does not belong to a Minecraft account.
-     *
-     * @param value     Textures: Value
-     * @param signature Textures: Signature
-     */
-
-    public static void setDefaultSkin( String value, String signature ) {
-        NickAPI.SKIN_GETTER.setDefaultValue( value );
-        NickAPI.SKIN_GETTER.setDefaultSignature( signature );
-    }
 
     /**
      * Changes the nick of a player
@@ -133,19 +94,6 @@ public class NickAPI {
             user.setNickedValue( skinValue );
             user.setNickedSignature( skinSignature );
         }
-    }
-
-    /**
-     * Sets the mineskin API key and user agent to get further access
-     *
-     * @param apiKey
-     */
-
-    public static void setMineSkinAPIData( String userAgent, String apiKey ) {
-        NickAPI.client = MineSkinClient.builder()
-                .requestHandler( JsoupRequestHandler::new )
-                .userAgent( userAgent ).apiKey( apiKey )
-                .build();
     }
 
     /**
@@ -304,6 +252,22 @@ public class NickAPI {
             user.setRequestedUUIDFromUUID( user.getOriginalUniqueId() );
     }
 
+    /**
+     * Returns the player object by giving a nicked name.
+     * Returns a null if parameter name does not belong to a nicked player
+     * @param name
+     * @return
+     */
+
+    public static Player getNickedPlayer( String name ) {
+        for ( NickUser user : UserHandler.getUsers() ) {
+            if ( user != null ) {
+                if ( user.getNickedName() != null && name.equalsIgnoreCase( user.getNickedName() ) )
+                    return Bukkit.getPlayer( user.getOriginalUniqueId()  );
+            }
+        }
+        return null;
+    }
 
     /**
      * Gets player original name
@@ -326,7 +290,7 @@ public class NickAPI {
      * @return
      */
 
-    public static String getOriginalValue( Player player ) {
+    public static String getOriginalSkinValue( Player player ) {
         NickUser user = UserHandler.getUser( player.getUniqueId() );
         if ( user != null )
             return user.getOriginalValue();
@@ -340,10 +304,23 @@ public class NickAPI {
      * @return
      */
 
-    public static String getOriginalSignature( Player player ) {
+    public static String getOriginalSkinSignature( Player player ) {
         NickUser user = UserHandler.getUser( player.getUniqueId() );
         if ( user != null )
             return user.getOriginalSignature();
+        return null;
+    }
+
+    /**
+     * Returns the player clientside uniqueId. If unnicked, it will return the original uuid, if nicked, it will return the nicked one.
+     * @param player
+     * @return
+     */
+
+    public static UUID getUniqueId( Player player ) {
+        NickUser user = UserHandler.getUser( player.getUniqueId() );
+        if ( user != null )
+            return user.getNickedUniqueId();
         return null;
     }
 
@@ -368,7 +345,7 @@ public class NickAPI {
      * @return
      */
 
-    public static String getValue( Player player ) {
+    public static String getSkinValue( Player player ) {
         NickUser user = UserHandler.getUser( player.getUniqueId() );
         if ( user != null )
             return user.getNickedValue();
@@ -382,7 +359,7 @@ public class NickAPI {
      * @return
      */
 
-    public static String getSignature( Player player ) {
+    public static String getSkinSignature( Player player ) {
         NickUser user = UserHandler.getUser( player.getUniqueId() );
         if ( user != null )
             return user.getNickedSignature();
@@ -424,6 +401,17 @@ public class NickAPI {
     }
 
     /**
+     * Checks between online players whether the parameter name is already used by a nicked player
+     *
+     * @param name
+     * @return
+     */
+
+    public static boolean isNickedName( String name ) {
+        return NickAPI.nickExists( name );
+    }
+
+    /**
      * Hide player from other players
      *
      * @param player   Player that should be hidden
@@ -432,6 +420,7 @@ public class NickAPI {
 
     public static void hidePlayer( Player player, Player hiddenTo ) {
         NickPlugin.instance().getHandler().removeCurrentUniqueId( player, hiddenTo );
+        if ( hiddenTo == player ) return;
         hiddenTo.hidePlayer( player );
     }
 
@@ -443,6 +432,7 @@ public class NickAPI {
      */
 
     public static void showPlayer( Player player, Player shownTo ) {
+        if ( shownTo == player ) return;
         shownTo.showPlayer( player );
     }
 
@@ -478,6 +468,7 @@ public class NickAPI {
     public static void addBypass( Player bypassingPlayer, Player nickedPlayer ) {
         NickAPI.getBypassedUUIDs( bypassingPlayer ).add( nickedPlayer.getUniqueId() );
     }
+
 
     /**
      * Removes player to bypass nicked players nick state.
@@ -526,10 +517,22 @@ public class NickAPI {
         NickAPI.getBypassedUUIDs( bypassingPlayer ).remove( nickedUUID );
     }
 
+    public static Map<UUID, String> getNickedPlayers() {
+        Map<UUID, String> nickedPlayersMap = new HashMap<>();
+        for ( NickUser user : UserHandler.getUsers() ) {
+            if ( user != null ) {
+                if ( !user.getOriginalName().equalsIgnoreCase( user.getNickedName() ) ) {
+                    nickedPlayersMap.put( user.getOriginalUniqueId(), user.getNickedName() );
+                }
+            }
+        }
+        return nickedPlayersMap;
+    }
+
 
     /**
      * This method is important.
-     * It is the "trigger signal" to nick a player. If you nick / unnick / change skin / etc. call this method.
+     * It is the "trigger signal" to nick a player. If you nick / unnick / change skin, call this method.
      *
      * @param player
      */
@@ -543,13 +546,14 @@ public class NickAPI {
                 return;
 
             user.setCurrentNicking( true );
-            user.setInitializedNickTime( System.currentTimeMillis() + 3000L );
+            user.setInitializedNickTime( System.currentTimeMillis() + 5000L );
+            while ( !user.isInitialized() && user.getInitializedNickTime() >= System.currentTimeMillis() ) {}
 
-            while ( !user.isInitialized() && user.getInitializedNickTime() >= System.currentTimeMillis() ) {
-            }
+            user.setInitializedNickTime( 0L );
 
             if ( !user.isInitialized() ) {
-                NickPlugin.instance().getLogger().warning( "Player could not be nicked after trying for 3 seconds, abandoning.." );
+                NickPlugin.instance().getLogger().warning( "Player could not be nicked after trying for 5 seconds, abandoning.." );
+                NickPlugin.instance().getLogger().warning( "Maybe you are nicking in PlayerLoginEvent or way before the player exists?" );
                 user.setCurrentNicking( false );
                 return;
             }
@@ -557,7 +561,7 @@ public class NickAPI {
             // That's why async
             String minecraftNameSkin = user.getRequestedSkinFromMinecraftName();
             if ( minecraftNameSkin != null ) {
-                String[] skinData = NickAPI.SKIN_GETTER.uuidToSkinData( NickAPI.UUID_GETTER.minecraftNameToUniqueId( minecraftNameSkin ) );
+                String[] skinData = SkinGetter.uuidToSkinTexture( UUIDGetter.minecraftNameToUniqueId( minecraftNameSkin ) );
 
                 user.setNickedValue( skinData[0] );
                 user.setNickedSignature( skinData[1] );
@@ -572,7 +576,7 @@ public class NickAPI {
             // That's why async
             String minecraftNameUUID = user.getRequestedUUIDFromMinecraftName();
             if ( minecraftNameUUID != null ) {
-                user.setNickedUniqueId( NickAPI.UUID_GETTER.minecraftNameToUniqueId( minecraftNameUUID ) );
+                user.setNickedUniqueId( UUIDGetter.minecraftNameToUniqueId( minecraftNameUUID ) );
                 user.setRequestedUUIDFromMinecraftName( null );
             }
 
@@ -583,27 +587,18 @@ public class NickAPI {
             }
 
             String skinByURL = user.getRequestedSkinFromURL();
+            File skinByFile = user.getRequestedSkinFromFile();
+
             if ( skinByURL != null ) {
-                try {
-                    Skin skin = NickAPI.client.generateUrl( skinByURL ).get().getSkin();
-                    Texture texture = skin.data().texture();
-                    user.setNickedValue( texture.value() );
-                    user.setNickedSignature( texture.signature() );
-                } catch ( Exception e ) {
-                    throw new RuntimeException( e );
-                }
+                String[] texture = MineSkinGetter.skinTextureByURL( skinByURL );
+                user.setNickedValue( texture[0] );
+                user.setNickedSignature( texture[1] );
             }
 
-            File skinByFile = user.getRequestedSkinFromFile();
             if ( skinByFile != null ) {
-                try {
-                    Skin skin = NickAPI.client.generateUpload( skinByFile ).get().getSkin();
-                    Texture texture = skin.data().texture();
-                    user.setNickedValue( texture.value() );
-                    user.setNickedSignature( texture.signature() );
-                } catch ( Exception e ) {
-                    throw new RuntimeException( e );
-                }
+                String[] texture = MineSkinGetter.skinTextureByFile( skinByFile );
+                user.setNickedValue( texture[0] );
+                user.setNickedSignature( texture[1] );
             }
 
             user.setRequestedSkinFromFile( null );
@@ -611,7 +606,7 @@ public class NickAPI {
             user.setRequestedUUIDFromMinecraftName( null );
             user.setRequestedSkinFromMinecraftName( null );
 
-            Bukkit.getScheduler().runTask( NickPlugin.instance(), () -> NickPlugin.instance().getHandler().sendPacket( player, NickPlugin.instance() ) );
+            Bukkit.getScheduler().runTask( NickPlugin.instance(), () -> NickPlugin.instance().getHandler().sendPacket( player ) );
         } );
     }
 

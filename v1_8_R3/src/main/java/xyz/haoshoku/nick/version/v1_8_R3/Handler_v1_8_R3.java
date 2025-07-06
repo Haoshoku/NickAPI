@@ -33,30 +33,36 @@ import io.netty.channel.ChannelPromise;
 import net.minecraft.server.v1_8_R3.*;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.craftbukkit.v1_8_R3.CraftWorld;
 import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
+import xyz.haoshoku.nick.events.NickFinishEvent;
 import xyz.haoshoku.nick.user.NickUser;
 import xyz.haoshoku.nick.user.UserHandler;
 import xyz.haoshoku.nick.utils.ReflectionUtils;
+import xyz.haoshoku.nick.version.RespawnHandler;
 import xyz.haoshoku.nick.version.VersionHandler;
 
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
 public class Handler_v1_8_R3 implements VersionHandler {
 
+    private Plugin plugin;
+
     @Override
     public void pluginOnEnable( Plugin plugin ) {
+        this.plugin = plugin;
         Bukkit.getScheduler().runTask( plugin, () -> {
             for ( Player player : Bukkit.getOnlinePlayers() ) {
                 UserHandler.createUser( player.getUniqueId() );
                 NickUser user = UserHandler.getUser( player.getUniqueId() );
                 this.setPlayerData( player );
                 user.setInitialized( true );
-                this.sendPacket( player, plugin );
+                this.sendPacket( player );
+
             }
         } );
     }
@@ -99,10 +105,10 @@ public class Handler_v1_8_R3 implements VersionHandler {
                             UUID receivedUUID = infoData.a().getId();
                             if ( receivedUUID.equals( player.getUniqueId() ) ) continue;
                             NickUser receivedUser = UserHandler.getUser( receivedUUID );
-                            Player receivedPlayer = Bukkit.getPlayer( receivedUUID );
-                            if ( receivedUser == null || receivedPlayer == null || !receivedPlayer.isOnline() ) continue;
+                            if ( receivedUser == null ) continue;
                             if ( receivedUser.getNickedUniqueId() == null || receivedUser.getNickedName() == null
                                     || receivedUser.getNickedValue() == null || receivedUser.getNickedSignature() == null ) continue;
+
                             if ( UserHandler.getUser( player.getUniqueId() ) == null ) continue;
 
                             UUID packetUniqueId;
@@ -124,7 +130,6 @@ public class Handler_v1_8_R3 implements VersionHandler {
 
                             GameProfile newGameProfile = new GameProfile( packetUniqueId, packetName );
                             newGameProfile.getProperties().put( "textures", new Property( "textures", packetValue, packetSignature ) );
-
                             PacketPlayOutPlayerInfo.PlayerInfoData newInfoData =
                                     playerInfoPacket.new PlayerInfoData( newGameProfile, infoData.b(), infoData.c(), infoData.d() );
                             playerInfoDataList.set( i, newInfoData );
@@ -150,7 +155,7 @@ public class Handler_v1_8_R3 implements VersionHandler {
         pipeline.addBefore( "packet_handler", "nickapi", duplexHandler );
     }
 
-    public void sendPacket( Player player, Plugin plugin ) {
+    public void sendPacket( Player player ) {
         CraftPlayer craftPlayer = (CraftPlayer) player;
         EntityPlayer entityPlayer = craftPlayer.getHandle();
         NickUser user = UserHandler.getUser( player.getUniqueId() );
@@ -175,47 +180,75 @@ public class Handler_v1_8_R3 implements VersionHandler {
         newProfile.getProperties().removeAll( "textures" );
         newProfile.getProperties().put( "textures", new Property( "textures", value, signature ) );
 
-
         PacketPlayOutPlayerInfo addInfoPacket = new PacketPlayOutPlayerInfo( PacketPlayOutPlayerInfo.EnumPlayerInfoAction.ADD_PLAYER ); // DECORATION
         ReflectionUtils.setField( addInfoPacket, "b", Collections.singletonList( addInfoPacket.new PlayerInfoData( newProfile, entityPlayer.ping,
                 entityPlayer.playerInteractManager.getGameMode(), entityPlayer.listName ) ) );
 
-        entityPlayer.u().getPlayerChunkMap().removePlayer( entityPlayer );
-        Location location = player.getLocation().clone();
-        WorldServer worldServer = ((CraftWorld) location.getWorld()).getHandle();
-
-        int actualDimension = worldServer.getWorld().getEnvironment().getId();
-
         entityPlayer.playerConnection.sendPacket( removeInfoPacket );
         entityPlayer.playerConnection.sendPacket( addInfoPacket );
 
-        entityPlayer.playerConnection.sendPacket( new PacketPlayOutRespawn( actualDimension, worldServer.getDifficulty(),
-                worldServer.getWorldData().getType(), entityPlayer.playerInteractManager.getGameMode() ) );
-        entityPlayer.playerConnection.sendPacket( new PacketPlayOutRespawn( actualDimension, worldServer.getDifficulty(),
-                worldServer.getWorldData().getType(), entityPlayer.playerInteractManager.getGameMode() ) );
-
-        entityPlayer.u().getPlayerChunkMap().addPlayer( entityPlayer );
-
-        player.teleport( location.clone().add( 75, 75, 75 ) );
-        player.teleport( location );
-
-        player.setFallDistance( 0F );
-
-        for ( Player online : Bukkit.getOnlinePlayers() ) {
-            if ( player != online ) {
-                if ( online.canSee( player ) ) {
-                    online.hidePlayer( player );
-                    online.showPlayer( player );
-                }
-            }
-        }
+        Location location = player.getLocation().clone();
 
         PlayerList playerList = MinecraftServer.getServer().getPlayerList();
+
+        if ( RespawnHandler.hasDisabledSpigotRespawn1_8() ) {
+            /*
+            Inspired by paper
+             */
+            entityPlayer.playerConnection.sendPacket( new PacketPlayOutRespawn( player.getWorld().getEnvironment().getId(), entityPlayer.world.getDifficulty(),
+                    entityPlayer.world.worldData.getType(), entityPlayer.playerInteractManager.getGameMode() ) );
+            entityPlayer.playerConnection.sendPacket( new PacketPlayOutRespawn( player.getWorld().getEnvironment().getId(), entityPlayer.world.getDifficulty(),
+                    entityPlayer.world.worldData.getType(), entityPlayer.playerInteractManager.getGameMode() ) );
+            entityPlayer.updateAbilities();
+
+            try {
+                Method declaredMethod = entityPlayer.playerConnection.getClass().getDeclaredMethod( "internalTeleport", double.class, double.class,
+                        double.class, float.class, float.class, Class.forName( "java.util.Set" ) );
+                declaredMethod.setAccessible( true );
+                declaredMethod.invoke( entityPlayer.playerConnection,
+                        location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch(), Collections.emptySet() );
+            } catch ( Exception e ) {
+                throw new RuntimeException( e );
+            }
+
+            entityPlayer.playerConnection.sendPacket( new PacketPlayOutExperience( entityPlayer.exp, entityPlayer.newLevel, entityPlayer.expTotal ) );
+
+            for ( MobEffect mobEffect : entityPlayer.getEffects() )
+                entityPlayer.playerConnection.sendPacket( new PacketPlayOutEntityEffect( entityPlayer.getId(), mobEffect ) );
+            if ( player.isOp() ) {
+                player.setOp( false );
+                player.setOp( true );
+            }
+
+        } else {
+            WorldServer worldServer = entityPlayer.server.getWorldServer( 0 );
+            ReflectionUtils.setFieldSuperClass( worldServer, "world", player.getWorld() );
+            playerList.moveToWorld( entityPlayer, 0, false, location, true );
+            ReflectionUtils.setFieldSuperClass( worldServer, "world", Bukkit.getWorlds().get( 0 ) );
+            playerList.a( entityPlayer, worldServer );
+        }
+
+        player.teleport( location );
+        player.setFallDistance( 0F );
+
         entityPlayer.updateAbilities();
+        player.recalculatePermissions();
+        playerList.b( entityPlayer, entityPlayer.u() );
         playerList.updateClient( entityPlayer );
         entityPlayer.triggerHealthUpdate();
 
+        for ( Player online : Bukkit.getOnlinePlayers() ) {
+            if ( player != online && online.canSee( player ) ) {
+                online.hidePlayer( player );
+                online.showPlayer( player );
+            }
+        }
+
         user.setCurrentNicking( false );
+
+        Bukkit.getPluginManager().callEvent( new NickFinishEvent( player, user.getOriginalUniqueId(),
+                user.getOriginalName(), user.getOriginalValue(), user.getOriginalSignature(), user.getNickedUniqueId(),
+                user.getNickedName(), user.getNickedValue(), user.getNickedSignature(), user.getBypassNickSet() ) );
     }
 
     @Override
@@ -234,6 +267,13 @@ public class Handler_v1_8_R3 implements VersionHandler {
             user.setNickedValue( property.getValue() );
             user.setNickedSignature( property.getSignature() );
         }
+
+        if ( user.getOriginalValue() == null ) {
+            user.setOriginalValue( "" );
+            user.setOriginalSignature( "" );
+            user.setNickedValue( "" );
+            user.setNickedSignature( "" );
+        }
     }
 
     @Override
@@ -242,12 +282,13 @@ public class Handler_v1_8_R3 implements VersionHandler {
         EntityPlayer entityPlayer = ((CraftPlayer) player).getHandle();
         if ( playerUser == null ) return;
 
-        GameProfile profile = new GameProfile( playerUser.getNickedUniqueId(), playerUser.getNickedName() );
-        PacketPlayOutPlayerInfo removeInfoPacket = new PacketPlayOutPlayerInfo( PacketPlayOutPlayerInfo.EnumPlayerInfoAction.REMOVE_PLAYER );
-        PacketPlayOutPlayerInfo.PlayerInfoData playerInfoData = removeInfoPacket.new PlayerInfoData( profile, 0,
+        GameProfile nickedProfile = new GameProfile( playerUser.getNickedUniqueId(), playerUser.getNickedName() );
+        PacketPlayOutPlayerInfo removeInfoPacketNicked = new PacketPlayOutPlayerInfo( PacketPlayOutPlayerInfo.EnumPlayerInfoAction.REMOVE_PLAYER );
+        PacketPlayOutPlayerInfo.PlayerInfoData playerInfoDataNicked = removeInfoPacketNicked.new PlayerInfoData( nickedProfile, 0,
                 entityPlayer.playerInteractManager.getGameMode(), entityPlayer.listName );
-        ReflectionUtils.setField( removeInfoPacket, "b", Collections.singletonList( playerInfoData ) );;
-        ((CraftPlayer) toPlayer).getHandle().playerConnection.sendPacket( removeInfoPacket );
+        ReflectionUtils.setField( removeInfoPacketNicked, "b", Collections.singletonList( playerInfoDataNicked ) );
+        ((CraftPlayer) toPlayer).getHandle().playerConnection.sendPacket( removeInfoPacketNicked );
+
     }
 
 }

@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package xyz.haoshoku.nick.version.v1_21_R1;
+package xyz.haoshoku.nick.version.v1_21_R3;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
@@ -36,9 +36,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.RemoteChatSession;
 import net.minecraft.network.protocol.game.*;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.PlayerModelPart;
 import org.bukkit.Bukkit;
-import org.bukkit.craftbukkit.v1_21_R1.CraftServer;
-import org.bukkit.craftbukkit.v1_21_R1.entity.CraftPlayer;
+import org.bukkit.craftbukkit.v1_21_R3.CraftServer;
+import org.bukkit.craftbukkit.v1_21_R3.entity.CraftPlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.plugin.Plugin;
@@ -52,7 +53,7 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.UUID;
 
-public class Handler_v1_21_R1 implements VersionHandler {
+public class Handler_v1_21_R3 implements VersionHandler {
 
     private Plugin plugin;
 
@@ -156,7 +157,7 @@ public class Handler_v1_21_R1 implements VersionHandler {
                                 packetSignature ) );
 
                         var newEntry = new ClientboundPlayerInfoUpdatePacket.Entry( packetUniqueId, newGameProfile,
-                                entry.listed(), entry.latency(), entry.gameMode(), entry.displayName(), entry.chatSession() );
+                                entry.listed(), entry.latency(), entry.gameMode(), entry.displayName(), entry.showHat(), entry.listOrder(), entry.chatSession() );
 
                         entriesListCopied.set( i, newEntry );
                     }
@@ -208,9 +209,9 @@ public class Handler_v1_21_R1 implements VersionHandler {
 
         var updateInfoPacket = new ClientboundPlayerInfoUpdatePacket( ClientboundPlayerInfoUpdatePacket.Action.ADD_PLAYER, serverPlayer ); // DECORATION
         ReflectionUtils.setField( updateInfoPacket, "b", enumActions );
-        ReflectionUtils.setField( updateInfoPacket, "c", Collections.singletonList( new ClientboundPlayerInfoUpdatePacket.Entry( player.getUniqueId(), newProfile, true, craftPlayer.getPing(),
-                serverPlayer.gameMode.getGameModeForPlayer(), serverPlayer.listName, Optionull.map( serverPlayer.getChatSession(), RemoteChatSession::asData ) ) ) );
 
+        ReflectionUtils.setField( updateInfoPacket, "c", Collections.singletonList( new ClientboundPlayerInfoUpdatePacket.Entry( player.getUniqueId(), newProfile, true, craftPlayer.getPing(),
+                serverPlayer.gameMode.getGameModeForPlayer(), serverPlayer.listName, serverPlayer.isModelPartShown( PlayerModelPart.HAT ), serverPlayer.getTabListOrder(), Optionull.map( serverPlayer.getChatSession(), RemoteChatSession::asData ) ) ) );
 
         var playerList = ((CraftServer) Bukkit.getServer()).getServer().getPlayerList();
         var location = player.getLocation().clone();

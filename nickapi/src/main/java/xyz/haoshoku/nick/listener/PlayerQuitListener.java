@@ -31,6 +31,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
 import xyz.haoshoku.nick.NickPlugin;
+import xyz.haoshoku.nick.api.NickAPI;
 import xyz.haoshoku.nick.user.UserHandler;
 
 public class PlayerQuitListener implements Listener {
@@ -38,10 +39,11 @@ public class PlayerQuitListener implements Listener {
     @EventHandler( priority = EventPriority.HIGHEST )
     public void onQuit( PlayerQuitEvent event ) {
         Player player = event.getPlayer();
-
         for ( Player online : Bukkit.getOnlinePlayers() )
             NickPlugin.instance().getHandler().removeCurrentUniqueId( player, online );
+        NickAPI.resetProfileName( player );
         UserHandler.deleteUser( event.getPlayer().getUniqueId() );
+
     }
 
 }
